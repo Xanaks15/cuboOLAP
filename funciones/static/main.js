@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
   
-        renderTable(data.data, data.columns, "dice-resultado");
+        renderTable("dice-resultado", data.columns, data.data);
       } catch (error) {
         console.error("Error al generar sección del cubo (DICE):", error);
         resultDice.innerHTML = "<em>Error al cargar datos</em>";
