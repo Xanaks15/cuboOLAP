@@ -69,29 +69,6 @@ def cubo_completo(df):
     ).reset_index().fillna(0)
     vistas["producto_region_anio_ventas"] = vista1.to_dict(orient="records")
 
-    # Vista 2: Ventas por Año x Región
-    vista2 = pd.pivot_table(
-        df,
-        values="Ventas",
-        index=["Año"],
-        columns=["Región"],
-        aggfunc="sum",
-        margins=False
-    ).reset_index().fillna(0)
-    vistas["anio_region_ventas"] = vista2.to_dict(orient="records")
-
-    # Vista 3: Cantidad por Producto x Año
-    if "Cantidad" in df.columns:
-        vista3 = pd.pivot_table(
-            df,
-            values="Cantidad",
-            index=["Producto"],
-            columns=["Año"],
-            aggfunc="sum",
-            margins=False
-        ).reset_index().fillna(0)
-        vistas["producto_anio_cantidad"] = vista3.to_dict(orient="records")
-
     return vistas
 
 def detalle_celda(df, dim_x, valor_x, dim_y, valor_y):
