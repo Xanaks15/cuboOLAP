@@ -132,3 +132,18 @@ footer {
     color: #475569;
     font-size: .7rem;
 }
+
+.controls label {
+    display: inline-block;
+    margin-right: 10px;
+  }
+  
+  .controls select,
+  .controls input {
+    padding: 4px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background-color: #0e1621;
+    color: #eee;
+  }
+  

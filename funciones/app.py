@@ -37,21 +37,68 @@ def cara_del_cubo(df, dim_x, dim_y, metric):
     tabla = tabla.reset_index().fillna(0)
     return tabla
 
-def seccion_del_cubo(df, filtro_dim, filtro_valor):
+
+def seccion_del_cubo_dice(
+    df: pd.DataFrame,
+    anios=None,
+    regiones=None,
+    productos=None,
+    canales=None,
+    metric="Ventas"
+):
     """
-    Aplica slice/dice: filtra el DataFrame por una dimensión específica.
-    Devuelve las filas filtradas resumidas por Año y Región (por ejemplo).
-    Aquí puedes customizar la agregación que quieras mostrar.
+    Realiza una operación DICE sobre el cubo OLAP:
+    filtra simultáneamente por varias dimensiones y devuelve una vista 2D.
+
+    Parámetros:
+        df          : DataFrame original del cubo
+        anios       : lista o valor único de años (ej. [2023, 2024])
+        regiones    : lista o valor único de regiones
+        productos   : lista o valor único de productos
+        canales     : lista o valor único de canales
+        metric      : métrica a resumir (por defecto 'Ventas')
+
+    Retorna:
+        DataFrame 2D resumido por Año y Región.
     """
-    sub = df[df[filtro_dim] == filtro_valor]
+
+    # --- Construcción del filtro dinámico
+    m = pd.Series([True] * len(df))
+
+    if anios is not None:
+        if not isinstance(anios, (list, tuple)):
+            anios = [anios]
+        m &= df["Año"].isin(anios)
+
+    if regiones is not None:
+        if not isinstance(regiones, (list, tuple)):
+            regiones = [regiones]
+        m &= df["Región"].isin(regiones)
+
+    if productos is not None:
+        if not isinstance(productos, (list, tuple)):
+            productos = [productos]
+        m &= df["Producto"].isin(productos)
+
+    if canales is not None:
+        if not isinstance(canales, (list, tuple)):
+            canales = [canales]
+        m &= df["Canal"].isin(canales)
+
+    # --- Aplicar el filtro DICE
+    sub = df.loc[m].copy()
+
+    # --- Generar la tabla 2D (puedes cambiar índices si lo deseas)
     tabla = pd.pivot_table(
         sub,
-        values="Ventas",
+        values=metric,
         index=["Año", "Región"],
         aggfunc="sum",
         margins=False
-    ).reset_index().fillna(0)
+    ).reset_index().fillna(0).round(2)
+
     return tabla
+
 
 def cubo_completo(df):
     vistas = {}
@@ -139,28 +186,41 @@ def api_cara():
 
 @app.route("/api/seccion")
 def api_seccion():
-    filtro_dim = request.args.get("filtro_dim", "Año")
-    filtro_valor = request.args.get("filtro_valor", "2023")
+    anios = request.args.get("anios")
+    regiones = request.args.get("regiones")
+    productos = request.args.get("productos")
+    canales = request.args.get("canales")
+    metric = request.args.get("metric", "Ventas")
 
-    # Detectar tipo de dato de la columna (solo con Pandas)
-    if filtro_dim in DATA_DF.columns:
-        dtype = DATA_DF[filtro_dim].dtype
-        if pd.api.types.is_numeric_dtype(dtype):
-            try:
-                filtro_valor = float(filtro_valor)
-            except ValueError:
-                pass
+    # convertir strings CSV a listas
+    parse_list = lambda x: x.split(",") if x else None
 
-    # Filtrar los datos dinámicamente
-    tabla = DATA_DF[DATA_DF[filtro_dim] == filtro_valor].copy()
+    anios = parse_list(anios)
+    regiones = parse_list(regiones)
+    productos = parse_list(productos)
+    canales = parse_list(canales)
+
+    # convertir años a enteros si aplica
+    if anios:
+        try:
+            anios = [int(a) for a in anios]
+        except ValueError:
+            pass
+
+    # ejecutar dice
+    tabla = seccion_del_cubo_dice(DATA_DF, anios, regiones, productos, canales, metric)
 
     return safe_json({
-        "filtro_dim": filtro_dim,
-        "filtro_valor": filtro_valor,
+        "filtros": {
+            "Año": anios,
+            "Región": regiones,
+            "Producto": productos,
+            "Canal": canales
+        },
+        "metric": metric,
         "data": tabla.to_dict(orient="records"),
         "columns": list(tabla.columns)
     })
-
 
 
 @app.route("/api/cubo")
