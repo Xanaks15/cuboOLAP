@@ -11,19 +11,24 @@ function renderTable(containerId, columns, rows) {
         return;
     }
 
-    // construir encabezados
     let thead = "<thead><tr>";
     for (const col of columns) {
         thead += `<th>${col}</th>`;
     }
     thead += "</tr></thead>";
 
-    // construir cuerpo
     let tbody = "<tbody>";
     for (const row of rows) {
         tbody += "<tr>";
         for (const col of columns) {
-            tbody += `<td>${row[col] !== undefined ? row[col] : ""}</td>`;
+            let value = row[col];
+
+            // 👇 aquí controlamos los decimales
+            if (typeof value === "number") {
+                value = value.toFixed(2); // fuerza 2 decimales
+            }
+
+            tbody += `<td>${value !== undefined ? value : ""}</td>`;
         }
         tbody += "</tr>";
     }

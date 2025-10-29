@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, request, render_template
 import pandas as pd
 import json
 from flask import Response
@@ -11,6 +11,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # ---- Generamos el dataset una vez al iniciar ----
 DATA_DF = generar_dataset(seed=42)
+pd.options.display.float_format = "{:.2f}".format
 
 def safe_json(data):
     """Convierte objetos de Pandas/Numpy a JSON seguro."""
@@ -52,47 +53,41 @@ def seccion_del_cubo(df, filtro_dim, filtro_valor):
     return tabla
 
 def cubo_completo(df):
-    """
-    Devuelve varias vistas/pivotes predefinidas del cubo.
-    Esto simula 'todas las caras' que existen.
-    """
     vistas = {}
 
-    # Vista 1: Ventas por Producto x Región x Año (colapsando trimestre)
+    # 1️⃣ Cubo principal: Producto x Región x Año x Trimestre
     vista1 = pd.pivot_table(
         df,
         values="Ventas",
         index=["Producto", "Región"],
-        columns=["Año"],
+        columns=["Año", "Trimestre"],
         aggfunc="sum",
-        margins=False
-    ).reset_index().fillna(0)
-    vistas["producto_region_anio_ventas"] = vista1.to_dict(orient="records")
+        margins=True,
+        margins_name="Total"
+    ).reset_index().fillna(0).round(2)
 
-    # Vista 2: Ventas por Año x Región
-    vista2 = pd.pivot_table(
-        df,
-        values="Ventas",
-        index=["Año"],
-        columns=["Región"],
-        aggfunc="sum",
-        margins=False
-    ).reset_index().fillna(0)
-    vistas["anio_region_ventas"] = vista2.to_dict(orient="records")
+    # 🔧 Aplana columnas multinivel (ej: (2023,1) -> "2023-T1")
+    def formatear_columna(col):
+        """
+        Convierte columnas tipo ('2023', 1) → '2023-T1'
+        y deja sin cambios columnas como ('Producto', '') → 'Producto'.
+        """
+        if isinstance(col, tuple):
+            # Si hay año y trimestre (por ejemplo (2023, 1))
+            if len(col) == 2 and str(col[1]).isdigit():
+                return f"{col[0]}-T{col[1]}"
+            # Si es una columna base (Producto, Región)
+            elif col[1] in [None, ""]:
+                return str(col[0])
+        # Si no es tupla (columna normal)
+        return str(col)
 
-    # Vista 3: Cantidad por Producto x Año
-    if "Cantidad" in df.columns:
-        vista3 = pd.pivot_table(
-            df,
-            values="Cantidad",
-            index=["Producto"],
-            columns=["Año"],
-            aggfunc="sum",
-            margins=False
-        ).reset_index().fillna(0)
-        vistas["producto_anio_cantidad"] = vista3.to_dict(orient="records")
+    # Aplicar el formateo a todas las columnas
+    vista1.columns = [formatear_columna(c) for c in vista1.columns]
 
+    vistas["producto_region_anio_trimestre_ventas"] = vista1.to_dict(orient="records")
     return vistas
+
 
 def detalle_celda(df, dim_x, valor_x, dim_y, valor_y):
     """
