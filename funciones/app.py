@@ -138,16 +138,28 @@ def api_cara():
 
 @app.route("/api/seccion")
 def api_seccion():
-    filtro_dim = request.args.get("filtro_dim", "Región")
-    filtro_valor = request.args.get("filtro_valor", "Norte")
+    filtro_dim = request.args.get("filtro_dim", "Año")
+    filtro_valor = request.args.get("filtro_valor", "2023")
 
-    tabla = seccion_del_cubo(DATA_DF, filtro_dim, filtro_valor)
+    # Detectar tipo de la columna
+    if filtro_dim in DATA_DF.columns:
+        dtype = DATA_DF[filtro_dim].dtype
+        if np.issubdtype(dtype, np.number):
+            try:
+                filtro_valor = float(filtro_valor)
+            except ValueError:
+                pass
+
+    # Filtrar dinámicamente
+    tabla = DATA_DF[DATA_DF[filtro_dim] == filtro_valor]
+
     return safe_json({
         "filtro_dim": filtro_dim,
         "filtro_valor": filtro_valor,
         "data": tabla.to_dict(orient="records"),
-        "columns": list(map(str, tabla.columns))
+        "columns": list(tabla.columns)
     })
+
 
 
 @app.route("/api/cubo")
