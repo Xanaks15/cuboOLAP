@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template
 import pandas as pd
 import json
+import numpy as np
 from flask import Response
 
 # Importa tus módulos reales:
@@ -141,17 +142,17 @@ def api_seccion():
     filtro_dim = request.args.get("filtro_dim", "Año")
     filtro_valor = request.args.get("filtro_valor", "2023")
 
-    # Detectar tipo de la columna
+    # Detectar tipo de dato de la columna (solo con Pandas)
     if filtro_dim in DATA_DF.columns:
         dtype = DATA_DF[filtro_dim].dtype
-        if np.issubdtype(dtype, np.number):
+        if pd.api.types.is_numeric_dtype(dtype):
             try:
                 filtro_valor = float(filtro_valor)
             except ValueError:
                 pass
 
-    # Filtrar dinámicamente
-    tabla = DATA_DF[DATA_DF[filtro_dim] == filtro_valor]
+    # Filtrar los datos dinámicamente
+    tabla = DATA_DF[DATA_DF[filtro_dim] == filtro_valor].copy()
 
     return safe_json({
         "filtro_dim": filtro_dim,
