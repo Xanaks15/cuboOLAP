@@ -23,9 +23,13 @@ function renderTable(containerId, columns, rows) {
         for (const col of columns) {
             let value = row[col];
 
-            // 👇 aquí controlamos los decimales
+            // 👇 Controlar formato de números
             if (typeof value === "number") {
-                value = value.toFixed(2); // fuerza 2 decimales
+                if (!["año", "trimestre", "cantidad"].includes(col.toLowerCase())) {
+                    value = value.toFixed(2); // Solo redondear métricas (ventas, etc.)
+                } else {
+                    value = Math.trunc(value); // Mostrar sin decimales
+                }
             }
 
             tbody += `<td>${value !== undefined ? value : ""}</td>`;
@@ -37,6 +41,8 @@ function renderTable(containerId, columns, rows) {
     const tableHTML = `<table>${thead}${tbody}</table>`;
     container.innerHTML = tableHTML;
 }
+
+
 document.addEventListener("DOMContentLoaded", function () {
     const caraSelect = document.getElementById("cara-cubo");
     const inputDimX = document.getElementById("cara-dimx");
