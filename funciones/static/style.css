@@ -1,0 +1,134 @@
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    margin: 0;
+}
+
+header {
+    background: #1e293b;
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+}
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #fff;
+    font-weight: 600;
+}
+header p {
+    margin: .5rem 0 0;
+    color: #94a3b8;
+    font-size: .9rem;
+}
+
+.layout {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+@media(min-width: 900px){
+    .layout {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: .75rem;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 30px 60px rgba(0,0,0,.5);
+}
+
+.card h2 {
+    margin-top: 0;
+    font-size: 1rem;
+    color: #38bdf8;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+}
+.card .note {
+    margin-top: .25rem;
+    font-size: .8rem;
+    color: #94a3b8;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem 1rem;
+    margin-bottom: .75rem;
+    font-size: .8rem;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    color: #e2e8f0;
+    font-size: .75rem;
+    font-weight: 500;
+}
+input {
+    margin-top: .25rem;
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid #475569;
+    border-radius: .5rem;
+    padding: .4rem .6rem;
+    font-size: .8rem;
+    min-width: 7rem;
+}
+
+button {
+    background: #38bdf8;
+    color: #0f172a;
+    border: 0;
+    border-radius: .5rem;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .6rem .9rem;
+    cursor: pointer;
+    align-self: flex-end;
+}
+button:hover {
+    filter: brightness(1.1);
+}
+
+.resultado {
+    background: #0f172a;
+    border: 1px solid #475569;
+    border-radius: .5rem;
+    padding: .75rem;
+    font-size: .75rem;
+    color: #f8fafc;
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 400px;
+    font-size: .75rem;
+}
+th, td {
+    border: 1px solid #475569;
+    padding: .4rem .5rem;
+    text-align: left;
+    color: #f8fafc;
+}
+th {
+    background: #1e293b;
+    font-weight: 600;
+    color: #38bdf8;
+}
+
+footer {
+    text-align: center;
+    padding: 1rem;
+    color: #475569;
+    font-size: .7rem;
+}

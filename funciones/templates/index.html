@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor Cubo OLAP</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+    <h1>Visor del Cubo OLAP</h1>
+    <p>Visualización de cara, sección, cubo completo y detalle de celda</p>
+</header>
+
+<main class="layout">
+
+    <!-- 1. Cara del cubo -->
+    <section class="card">
+        <h2>1. Cara del cubo (2D)</h2>
+        <div class="controls">
+            <label>Eje X (dim_x):
+                <input id="cara-dimx" value="Año">
+            </label>
+            <label>Eje Y (dim_y):
+                <input id="cara-dimy" value="Región">
+            </label>
+            <label>Métrica:
+                <input id="cara-metric" value="Ventas">
+            </label>
+            <button id="btn-cara">Generar cara</button>
+        </div>
+        <div class="resultado" id="cara-resultado"></div>
+    </section>
+
+    <!-- 2. Sección del cubo -->
+    <section class="card">
+        <h2>2. Sección / Slice del cubo</h2>
+        <div class="controls">
+            <label>Filtrar dimensión:
+                <input id="sec-dim" value="Región">
+            </label>
+            <label>Valor:
+                <input id="sec-valor" value="Norte">
+            </label>
+            <button id="btn-seccion">Generar sección</button>
+        </div>
+        <div class="resultado" id="seccion-resultado"></div>
+    </section>
+
+    <!-- 3. Cubo completo -->
+    <section class="card">
+        <h2>3. Cubo completo (vistas predefinidas)</h2>
+        <p class="note">Estas tablas representan diferentes proyecciones del cubo completo.</p>
+        <button id="btn-cubo">Cargar cubo</button>
+        <div class="resultado" id="cubo-resultado"></div>
+    </section>
+
+    <!-- 4. Detalle de una celda -->
+    <section class="card">
+        <h2>4. Detalle de una celda (drill-down)</h2>
+        <div class="controls">
+            <label>Dim X:
+                <input id="celda-dimx" value="Año">
+            </label>
+            <label>Valor X:
+                <input id="celda-valorx" value="2024">
+            </label>
+            <label>Dim Y:
+                <input id="celda-dimy" value="Región">
+            </label>
+            <label>Valor Y:
+                <input id="celda-valory" value="Norte">
+            </label>
+            <button id="btn-celda">Ver detalle</button>
+        </div>
+        <div class="resultado" id="celda-resultado"></div>
+    </section>
+</main>
+
+<footer>
+    <small>Proyecto Cubo OLAP • Visualización académica</small>
+</footer>
+
+<script src="/static/main.js"></script>
+</body>
+</html>
