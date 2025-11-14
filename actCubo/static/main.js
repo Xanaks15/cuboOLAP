@@ -1,17 +1,33 @@
+async function fetchJSON(url) {
+
 /**
- * ============================================================
- * UTILIDADES GENERALES
- * ============================================================
+    Realiza una petición HTTP GET a una URL y devuelve el resultado como JSON.
+
+    Args:
+    url (string): URL a consultar mediante fetch.
+
+    Returns:
+    Promise<object>: Promesa que resuelve al objeto JSON resultante de la petición.
  */
 
-/** HTTP GET y JSON */
-async function fetchJSON(url) {
     const r = await fetch(url);
     return await r.json();
 }
 
-/** Renderización general de tablas HTML */
 function renderTable(containerId, columns, rows) {
+
+/**
+    Renderiza una tabla HTML en un contenedor usando columnas y filas proporcionadas.
+
+    Args:
+    containerId (string): ID del elemento HTML donde se insertará la tabla.
+    columns (Array<string>): Lista de nombres de columnas.
+    rows (Array<object>): Arreglo de objetos que representan las filas.
+
+    Returns:
+    void: No retorna valor; modifica el DOM insertando la tabla en el contenedor.
+ */
+
     const el = document.getElementById(containerId);
 
     if (!rows || rows.length === 0) {
@@ -46,14 +62,17 @@ function renderTable(containerId, columns, rows) {
     el.innerHTML = `<table>${thead}${tbody}</table>`;
 }
 
+document.addEventListener("DOMContentLoaded", () => {
 
 /**
- * ============================================================
- * 1. CARA DEL CUBO (SLICE 2D)
- * ============================================================
- */
+    Inicializa la lógica para mostrar una cara (slice 2D) del cubo OLAP.
 
-document.addEventListener("DOMContentLoaded", () => {
+    Args:
+    event (Event): Evento DOMContentLoaded (no se usa directamente).
+
+    Returns:
+    void: Configura eventos y carga inicial en el DOM.
+ */
 
     const caraSelect  = document.getElementById("cara-cubo");
     const inputX      = document.getElementById("cara-dimx");
@@ -61,25 +80,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputMetric = document.getElementById("cara-metric");
     const output      = document.getElementById("cara-resultado");
 
-    // 1. Cargar métricas ANTES DE CUALQUIER OTRA COSA
     fetchJSON("/api/opciones").then(opts => {
-
-        // Llenar select de métricas
         opts.metricas.forEach(m => {
             inputMetric.add(new Option(m, m));
         });
 
-        // Asignar valor inicial
         inputMetric.value = "Ventas";
 
-        // 🔥 AHORA SÍ — Ejecutar la primera carga
         generarCara();
     });
 
     async function generarCara() {
+
+/**
+    Genera y muestra una “cara” (slice) del cubo OLAP según dos dimensiones y una métrica.
+
+    Args:
+    Ninguno directo: utiliza valores actuales de los elementos del DOM (inputX, inputY, inputMetric).
+
+    Returns:
+    Promise<void>: No retorna valor; actualiza el contenido HTML del contenedor de resultado.
+ */
+
         const dimX   = inputX.value;
         const dimY   = inputY.value;
-        const metric = inputMetric.value || "Ventas";  // Backup extra por si acaso
+        const metric = inputMetric.value || "Ventas";
 
         output.innerHTML = "<em>Cargando...</em>";
 
@@ -96,11 +121,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const v = caraSelect.value;
         let dx = "Año", dy = "Región";
 
-        if (v === "anio-canal")          { dx = "Año";      dy = "Canal"; }
-        if (v === "producto-region")    { dx = "Producto"; dy = "Región"; }
-        if (v === "producto-canal")     { dx = "Producto"; dy = "Canal"; }
-        if (v === "trimestre-region")   { dx = "Trimestre";dy = "Región"; }
-        if (v === "mes-region")         { dx = "Mes";       dy = "Región"; }
+        if (v === "anio-canal")        { dx = "Año";      dy = "Canal"; }
+        if (v === "producto-region")   { dx = "Producto"; dy = "Región"; }
+        if (v === "producto-canal")    { dx = "Producto"; dy = "Canal"; }
+        if (v === "trimestre-region")  { dx = "Trimestre";dy = "Región"; }
+        if (v === "mes-region")        { dx = "Mes";      dy = "Región"; }
 
         inputX.value = dx;
         inputY.value = dy;
@@ -111,17 +136,33 @@ document.addEventListener("DOMContentLoaded", () => {
     inputMetric.addEventListener("change", generarCara);
 });
 
+document.addEventListener("DOMContentLoaded", () => {
 
 /**
- * ============================================================
- * 2. DICE
- * ============================================================
+    Inicializa la lógica para generar una sección (DICE) del cubo mediante filtros.
+
+    Args:
+    event (Event): Evento DOMContentLoaded (no se usa directamente).
+
+    Returns:
+    void: Configura el botón y el comportamiento de filtrado en el DOM.
  */
-document.addEventListener("DOMContentLoaded", () => {
+
     const btn = document.getElementById("btn-dice");
     const out = document.getElementById("dice-resultado");
 
     async function generarDice() {
+
+/**
+    Genera una sección (DICE) del cubo filtrando por múltiples dimensiones opcionales.
+
+    Args:
+    Ninguno directo: lee los valores desde los campos del DOM para construir los filtros.
+
+    Returns:
+    Promise<void>: No retorna valor; muestra el resultado de la sección en una tabla HTML.
+ */
+
         const anios     = document.getElementById("dice-anios").value;
         const regiones  = document.getElementById("dice-regiones").value;
         const productos = document.getElementById("dice-productos").value;
@@ -146,13 +187,17 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", generarDice);
 });
 
+document.addEventListener("DOMContentLoaded", async () => {
 
 /**
- * ============================================================
- * 3. CUBO DINÁMICO
- * ============================================================
+    Inicializa la lógica del cubo dinámico, permitiendo elegir dimensiones para filas y columnas.
+
+    Args:
+    event (Event): Evento DOMContentLoaded (no se usa directamente).
+
+    Returns:
+    void: Configura selects, métricas y botón para generar el cubo dinámico.
  */
-document.addEventListener("DOMContentLoaded", async () => {
 
     const selIndex   = document.getElementById("cubo-index");
     const selColumns = document.getElementById("cubo-columns");
@@ -171,10 +216,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     selMetric.value = "Ventas";
 
     function selectedValues(sel) {
+
+/**
+    Obtiene los valores seleccionados en un elemento <select> (posiblemente múltiple).
+
+    Args:
+    sel (HTMLSelectElement): Elemento select del que se tomarán las opciones seleccionadas.
+
+    Returns:
+    Array<string>: Lista de valores seleccionados.
+ */
+
         return [...sel.selectedOptions].map(o => o.value);
     }
 
     async function generarCubo() {
+
+/**
+    Construye y muestra un cubo dinámico usando dimensiones elegidas como índices y columnas.
+
+    Args:
+    Ninguno directo: utiliza los valores seleccionados en los elementos del DOM.
+
+    Returns:
+    Promise<void>: No retorna valor; renderiza la tabla del cubo dinámico en el DOM.
+ */
+
         out.innerHTML = "<em>Cargando cubo...</em>";
 
         const idx = selectedValues(selIndex);
@@ -195,13 +262,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", generarCubo);
 });
 
+document.getElementById("btn-celda").addEventListener("click", async () => {
 
 /**
- * ============================================================
- * 4. DETALLE DE CELDA (DRILL)
- * ============================================================
+    Maneja el evento de clic del botón de detalle de celda para obtener el drill-down.
+
+    Args:
+    event (MouseEvent): Evento de clic (no se usa directamente).
+
+    Returns:
+    void: Dispara la consulta de detalle de celda y actualiza la tabla en el DOM.
  */
-document.getElementById("btn-celda").addEventListener("click", async () => {
+
     const dx = document.getElementById("celda-dimx").value;
     const vx = document.getElementById("celda-valorx").value;
     const dy = document.getElementById("celda-dimy").value;
