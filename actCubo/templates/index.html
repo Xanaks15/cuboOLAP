@@ -6,7 +6,9 @@
     <title>Visor Cubo OLAP</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
+
 <header>
     <h1>Visor del Cubo OLAP</h1>
     <p>Visualización de cara, sección, cubo completo y detalle de celda</p>
@@ -14,79 +16,100 @@
 
 <main class="layout">
 
-    <!-- 1. Cara del cubo -->
+    <!-- 1. CARA -->
     <section class="card">
         <h2>1. Cara del cubo</h2>
-      
-        <div class="controls">
-          <!-- 🔸 Selector de cara -->
-          <label>Selecciona una cara del cubo:
-            <select id="cara-cubo">
-              <option value="anio-region">Año vs Región</option>
-              <option value="anio-canal">Año vs Canal</option>
-              <option value="producto-region">Producto vs Región</option>
-              <option value="producto-canal">Producto vs Canal</option>
-              <option value="trimestre-region">Trimestre vs Región</option>
-              <option value="mes-region">Mes vs Región</option>
-            </select>
-          </label>
-      
-          <!-- 🔸 Campos de eje y métrica -->
-          <label>Eje X (dim_x):
-            <input id="cara-dimx" readonly value="Año">
-          </label>
-      
-          <label>Eje Y (dim_y):
-            <input id="cara-dimy" readonly value="Región">
-          </label>
-      
-          <label>Métrica:
-            <input id="cara-metric" value="Ventas">
-          </label>
-        </div>
-      
-        <!-- Resultado -->
-        <div class="resultado" id="cara-resultado"></div>
-      </section>
-            
-      <section class="card">
-        <h2>2. Sección del cubo (DICE)</h2>
-        
-        <div class="controls">
-          <label>Años:
-            <input id="dice-anios" value="2023,2024">
-          </label>
-          <label>Regiones:
-            <input id="dice-regiones" value="Norte,Sur">
-          </label>
-          <label>Productos:
-            <input id="dice-productos" value="A,B,C">
-          </label>
-          <label>Canales:
-            <input id="dice-canales" value="Online,Tienda">
-          </label>
-          <label>Métrica:
-            <input id="dice-metric" value="Ventas">
-          </label>
-      
-          <button id="btn-dice">Generar sección</button>
-        </div>
-      
-        <div class="resultado" id="dice-resultado"></div>
-      </section>
-      
 
-    <!-- 3. Cubo completo -->
+        <div class="controls">
+            <label>Selecciona una cara:
+                <select id="cara-cubo">
+                    <option value="anio-region">Año vs Región</option>
+                    <option value="anio-canal">Año vs Canal</option>
+                    <option value="producto-region">Producto vs Región</option>
+                    <option value="producto-canal">Producto vs Canal</option>
+                    <option value="trimestre-region">Trimestre vs Región</option>
+                    <option value="mes-region">Mes vs Región</option>
+                </select>
+            </label>
+
+            <label>Eje X:
+                <input id="cara-dimx" readonly value="Año">
+            </label>
+
+            <label>Eje Y:
+                <input id="cara-dimy" readonly value="Región">
+            </label>
+
+            <label>Métrica:
+                <input id="cara-metric" value="Ventas">
+            </label>
+        </div>
+
+        <div class="resultado" id="cara-resultado"></div>
+    </section>
+
+
+
+
+    <!-- 2. DICE -->
     <section class="card">
-        <h2>3. Cubo completo (vistas predefinidas)</h2>
-        <p class="note">Estas tablas representan diferentes proyecciones del cubo completo.</p>
-        <button id="btn-cubo">Cargar cubo</button>
+        <h2>2. Sección del cubo (DICE)</h2>
+
+        <div class="controls">
+            <label>Años:
+                <input id="dice-anios" value="2023,2024">
+            </label>
+            <label>Regiones:
+                <input id="dice-regiones" value="Norte,Sur">
+            </label>
+            <label>Productos:
+                <input id="dice-productos" value="A,B,C">
+            </label>
+            <label>Canales:
+                <input id="dice-canales" value="Online,Tienda">
+            </label>
+        </div>
+
+        <button id="btn-dice">Generar sección</button>
+
+        <div class="resultado" id="dice-resultado"></div>
+    </section>
+
+
+
+
+    <!-- 3. CUBO COMPLETO -->
+    <section class="card">
+        <h2>3. Cubo completo (configurable)</h2>
+
+        <div class="controls">
+
+            <label>Filas (index):
+                <select id="cubo-index" multiple></select>
+            </label>
+
+            <label>Columnas:
+                <select id="cubo-columns" multiple></select>
+            </label>
+
+            <label>Métrica:
+                <select id="cubo-metric"></select>
+            </label>
+
+        </div>
+
+        <button id="btn-cubo">Generar cubo</button>
+
         <div class="resultado" id="cubo-resultado"></div>
     </section>
 
-    <!-- 4. Detalle de una celda -->
+
+
+
+    <!-- 4. CELDA -->
     <section class="card">
-        <h2>4. Detalle de una celda (drill-down)</h2>
+        <h2>4. Detalle de una celda</h2>
+
         <div class="controls">
             <label>Dim X:
                 <input id="celda-dimx" value="Año">
@@ -94,16 +117,20 @@
             <label>Valor X:
                 <input id="celda-valorx" value="2024">
             </label>
+
             <label>Dim Y:
                 <input id="celda-dimy" value="Región">
             </label>
             <label>Valor Y:
                 <input id="celda-valory" value="Norte">
             </label>
-            <button id="btn-celda">Ver detalle</button>
         </div>
+
+        <button id="btn-celda">Ver detalle</button>
+
         <div class="resultado" id="celda-resultado"></div>
     </section>
+
 </main>
 
 <footer>

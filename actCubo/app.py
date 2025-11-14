@@ -5,19 +5,26 @@ from generarDatos import generar_dataset
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# Dataset global inicial
+# ============================================================
+# DATASET GLOBAL
+# ============================================================
+# Se genera una sola vez para simular un cubo OLAP estático.
 DATA_DF = generar_dataset(seed=42)
 pd.options.display.float_format = "{:.2f}".format
 
 
+# ============================================================
+# UTILIDAD: JSON SEGURO
+# ============================================================
 def safe_json(data):
-    """Convierte un objeto Python o Pandas en una respuesta JSON segura.
-
+    """
+    Convierte estructuras Python/Pandas en una respuesta JSON segura.
+    
     Args:
-        data (object): Estructura serializable (dict, DataFrame, lista, etc.).
+        data (object): Diccionario, DataFrame, lista o cualquier estructura serializable.
 
     Returns:
-        flask.Response: Objeto HTTP con contenido JSON.
+        Response: Objeto HTTP con el JSON serializado.
     """
     return Response(
         json.dumps(data, ensure_ascii=False, default=str),
@@ -25,21 +32,21 @@ def safe_json(data):
     )
 
 
+# ============================================================
+# 1) CARA DEL CUBO (SLICE 2D)
+# ============================================================
 def cara_del_cubo(df, dim_x, dim_y, metric):
-    """Genera una vista 2D del cubo (operación "cara").
-
-    Crea una tabla dinámica (pivot table) donde las filas y columnas 
-    corresponden a dimensiones seleccionadas y los valores son la suma 
-    de la métrica especificada.
+    """
+    Genera una "cara" del cubo: tabla 2D agregada.
 
     Args:
-        df (pd.DataFrame): Dataset base del cubo.
-        dim_x (str): Dimensión a ubicar en columnas.
-        dim_y (str): Dimensión a ubicar en filas.
-        metric (str): Métrica a agregar (por ejemplo, "Ventas").
+        df (DataFrame): Dataset del cubo OLAP.
+        dim_x (str): Dimensión colocada en columnas.
+        dim_y (str): Dimensión colocada en filas.
+        metric (str): Métrica a agregar (sum).
 
     Returns:
-        pd.DataFrame: Tabla resumen bidimensional.
+        DataFrame: Tabla pivot 2D indexada por dim_y y columnas = dim_x.
     """
     tabla = pd.pivot_table(
         df,
@@ -49,65 +56,59 @@ def cara_del_cubo(df, dim_x, dim_y, metric):
         aggfunc="sum",
         margins=False
     ).reset_index().fillna(0)
+
     return tabla
 
 
-def seccion_del_cubo_dice(
-    df: pd.DataFrame,
-    anios=None,
-    regiones=None,
-    productos=None,
-    canales=None,
-    metric="Ventas"
-):
-    """Realiza una operación DICE sobre el cubo OLAP.
-
-    Filtra simultáneamente por varias dimensiones y devuelve el subconjunto
-    detallado de filas (sin agregación).
+# ============================================================
+# 2) DICE: Filtrado multidimensional
+# ============================================================
+def dice_subset(df, anios=None, regiones=None, productos=None, canales=None):
+    """
+    Realiza un DICE (subcubo filtrado sin agregación).
 
     Args:
-        df (pd.DataFrame): Dataset original del cubo.
-        anios (list[int] | None): Años seleccionados.
-        regiones (list[str] | None): Regiones seleccionadas.
-        productos (list[str] | None): Productos seleccionados.
-        canales (list[str] | None): Canales seleccionados.
-        metric (str): Métrica principal (por defecto 'Ventas').
+        df (DataFrame): Dataset global.
+        anios (list[int] | None): Lista de años a incluir.
+        regiones (list[str] | None): Lista de regiones a incluir.
+        productos (list[str] | None): Lista de productos a incluir.
+        canales (list[str] | None): Lista de canales a incluir.
 
     Returns:
-        pd.DataFrame: Subconjunto filtrado con columnas detalladas.
+        DataFrame: Subconjunto detallado con las filas que cumplen los filtros.
     """
-    # --- Construcción del filtro dinámico
     m = pd.Series([True] * len(df))
 
     if anios is not None:
-        if not isinstance(anios, (list, tuple)):
+        if not isinstance(anios, list):
             anios = [anios]
         m &= df["Año"].isin(anios)
 
     if regiones is not None:
-        if not isinstance(regiones, (list, tuple)):
+        if not isinstance(regiones, list):
             regiones = [regiones]
         m &= df["Región"].isin(regiones)
 
     if productos is not None:
-        if not isinstance(productos, (list, tuple)):
+        if not isinstance(productos, list):
             productos = [productos]
         m &= df["Producto"].isin(productos)
 
     if canales is not None:
-        if not isinstance(canales, (list, tuple)):
+        if not isinstance(canales, list):
             canales = [canales]
         m &= df["Canal"].isin(canales)
 
-    # --- Aplicar el filtro DICE (sin agregar)
+    # Filtrado final
     sub = df.loc[m].copy()
 
-    # --- Seleccionar columnas relevantes
-    columnas_utiles = ["Año", "Trimestre", "Mes", "Región", "Canal", "Producto", "Cantidad", "Ventas"]
-    columnas_existentes = [c for c in columnas_utiles if c in sub.columns]
-    sub = sub[columnas_existentes].reset_index(drop=True)
+    # Columnas a mostrar
+    columnas = ["Año", "Trimestre", "Mes", "Región", "Canal",
+                "Producto", "Cantidad", "Ventas"]
+    columnas = [c for c in columnas if c in sub.columns]
+    sub = sub[columnas]
 
-    # --- Redondear valores numéricos
+    # Redondeo
     sub["Ventas"] = sub["Ventas"].round(2)
     if "Cantidad" in sub.columns:
         sub["Cantidad"] = sub["Cantidad"].astype(int)
@@ -115,168 +116,218 @@ def seccion_del_cubo_dice(
     return sub
 
 
-def cubo_completo(df):
-    """Genera una representación agregada completa del cubo OLAP.
-
-    Construye una vista multidimensional (Producto × Región × Año × Trimestre) 
-    con sumas de ventas y formatea las columnas para exportar como JSON.
+# ============================================================
+# 3) CUBO COMPLETO DINÁMICO (PIVOT)
+# ============================================================
+def flatten_cols(cols):
+    """
+    Convierte MultiIndex de columnas en nombres legibles.
 
     Args:
-        df (pd.DataFrame): Dataset base del cubo.
+        cols (iterable): Columnas originales (posiblemente MultiIndex).
 
     Returns:
-        dict: Diccionario con vistas (key = nombre de vista, value = lista de registros).
+        list[str]: Lista de nombres de columnas simplificados.
     """
-    vistas = {}
-    vista1 = pd.pivot_table(
-        df,
-        values="Ventas",
-        index=["Producto", "Región"],
-        columns=["Año", "Trimestre"],
-        aggfunc="sum",
-        margins=True,
-        margins_name="Total"
-    ).reset_index().fillna(0).round(2)
-
-    def formatear_columna(col):
-        """Formatea nombres de columnas multinivel."""
+    out = []
+    for col in cols:
         if isinstance(col, tuple):
-            if len(col) == 2 and str(col[1]).isdigit():
-                return f"{col[0]}-T{col[1]}"
-            elif col[1] in [None, ""]:
-                return str(col[0])
-        return str(col)
+            a, b = col
+            if b and str(b).isdigit():
+                out.append(f"{a}-T{b}")
+            else:
+                out.append(str(a))
+        else:
+            out.append(str(col))
+    return out
 
-    vista1.columns = [formatear_columna(c) for c in vista1.columns]
-    vistas["producto_region_anio_trimestre_ventas"] = vista1.to_dict(orient="records")
-    return vistas
 
-
-def detalle_celda(df, dim_x, valor_x, dim_y, valor_y):
-    """Obtiene las filas que corresponden a una celda específica del cubo.
-
-    Args:
-        df (pd.DataFrame): Dataset base.
-        dim_x (str): Dimensión de columna.
-        valor_x (str | int): Valor de la dimensión X.
-        dim_y (str): Dimensión de fila.
-        valor_y (str | int): Valor de la dimensión Y.
+@app.route("/api/opciones")
+def api_opciones():
+    """
+    Devuelve las dimensiones disponibles y las métricas posibles.
 
     Returns:
-        pd.DataFrame: Subconjunto de filas correspondiente a la celda.
+        JSON: { dimensiones: [...], metricas: [...] }
     """
-    try:
-        valor_x = int(valor_x)
-    except ValueError:
-        pass
-    try:
-        valor_y = int(valor_y)
-    except ValueError:
-        pass
+    dims = ["Año", "Trimestre", "Mes", "Región", "Canal", "Producto"]
+    return safe_json({
+        "dimensiones": dims,
+        "metricas": ["Ventas", "Cantidad"]
+    })
+
+
+@app.route("/api/cubo_dinamico")
+def api_cubo_dinamico():
+    """
+    Construye un pivot OLAP configurable.
+    
+    Query params:
+        index (str): Dimensiones separadas por coma para filas.
+        columns (str): Dimensiones para columnas.
+        metric (str): Métrica a agregar.
+
+    Returns:
+        JSON: {
+          index: [...],
+          columns: [...],
+          metric: "...",
+          cols: columnas resultantes,
+          data: filas de la tabla pivot
+        }
+    """
+    index = request.args.get("index", "Producto,Región")
+    columns = request.args.get("columns", "Año,Trimestre")
+    metric = request.args.get("metric", "Ventas")
+
+    idx = [x for x in index.split(",") if x.strip()]
+    cols = [x for x in columns.split(",") if x.strip()]
+
+    tabla = pd.pivot_table(
+        DATA_DF,
+        values=metric,
+        index=idx if idx else None,
+        columns=cols if cols else None,
+        aggfunc="sum",
+        margins=True,         # ← SIEMPRE incluye totales OLAP
+        margins_name="Total"
+    ).reset_index().fillna(0)
+
+    tabla = tabla.round(2)
+    tabla.columns = flatten_cols(tabla.columns)
+
+    return safe_json({
+        "index": idx,
+        "columns": cols,
+        "metric": metric,
+        "cols": tabla.columns.tolist(),
+        "data": tabla.to_dict(orient="records")
+    })
+
+
+# ============================================================
+# 4) DETALLE DE UNA CELDA (DRILL)
+# ============================================================
+def detalle_celda(df, dim_x, valor_x, dim_y, valor_y):
+    """
+    Devuelve las filas del dataset que coinciden con una celda
+    específica del cubo OLAP.
+
+    Args:
+        df (DataFrame): Dataset.
+        dim_x (str): Dimensión horizontal.
+        valor_x (str|int): Valor de la dimensión X.
+        dim_y (str): Dimensión vertical.
+        valor_y (str|int): Valor de la dimensión Y.
+
+    Returns:
+        DataFrame: Filas detalladas que corresponden a esa celda.
+    """
+    try: valor_x = int(valor_x)
+    except: pass
+
+    try: valor_y = int(valor_y)
+    except: pass
 
     mask = (df[dim_x] == valor_x) & (df[dim_y] == valor_y)
-    detalle = df[mask].copy()
+    sub = df[mask].copy()
 
-    columnas_utiles = ["Año", "Trimestre", "Mes", "Región", "Canal", "Producto", "Cantidad", "Ventas"]
-    columnas_existentes = [c for c in columnas_utiles if c in detalle.columns]
-    return detalle[columnas_existentes]
+    columnas = ["Año", "Trimestre", "Mes", "Región",
+                "Canal", "Producto", "Cantidad", "Ventas"]
+    columnas = [c for c in columnas if c in sub.columns]
+
+    return sub[columnas]
 
 
-# ------------------ Rutas Flask ------------------
+# ============================================================
+# ENDPOINTS
+# ============================================================
 
 @app.route("/")
 def index():
-    """Renderiza la página principal de la aplicación."""
+    """Carga la página principal."""
     return render_template("index.html")
 
 
 @app.route("/api/cara")
 def api_cara():
-    """Endpoint que devuelve una vista 2D del cubo.
+    """
+    Endpoint: Vista 2D del cubo.
 
-    Query Params:
-        dim_x (str): Dimensión X.
-        dim_y (str): Dimensión Y.
-        metric (str): Métrica a calcular.
+    Query:
+        dim_x, dim_y, metric
 
     Returns:
-        JSON: Datos, columnas y metadatos de la vista.
+        JSON con columnas y datos pivotados.
     """
     dim_x = request.args.get("dim_x", "Año")
     dim_y = request.args.get("dim_y", "Región")
     metric = request.args.get("metric", "Ventas")
 
     tabla = cara_del_cubo(DATA_DF, dim_x, dim_y, metric)
+
     return safe_json({
         "dim_x": dim_x,
         "dim_y": dim_y,
         "metric": metric,
-        "data": tabla.to_dict(orient="records"),
-        "columns": list(map(str, tabla.columns))
+        "columns": list(map(str, tabla.columns)),
+        "data": tabla.to_dict(orient="records")
     })
 
 
 @app.route("/api/seccion")
 def api_seccion():
-    """Endpoint que ejecuta la operación DICE sobre el cubo.
+    """
+    Endpoint: DICE (filtros múltiples).
 
-    Query Params:
-        anios, regiones, productos, canales, metric (str): Filtros y métrica.
+    Query:
+        anios, regiones, productos, canales
 
     Returns:
-        JSON: Tabla filtrada y metadatos de filtros aplicados.
+        JSON con columnas y datos filtrados sin agregación.
     """
-    anios = request.args.get("anios")
-    regiones = request.args.get("regiones")
-    productos = request.args.get("productos")
-    canales = request.args.get("canales")
-    metric = request.args.get("metric", "Ventas")
-
     parse_list = lambda x: x.split(",") if x else None
-    anios = parse_list(anios)
-    regiones = parse_list(regiones)
-    productos = parse_list(productos)
-    canales = parse_list(canales)
+
+    anios = parse_list(request.args.get("anios"))
+    regiones = parse_list(request.args.get("regiones"))
+    productos = parse_list(request.args.get("productos"))
+    canales = parse_list(request.args.get("canales"))
 
     if anios:
         try:
             anios = [int(a) for a in anios]
-        except ValueError:
+        except:
             pass
 
-    tabla = seccion_del_cubo_dice(DATA_DF, anios, regiones, productos, canales, metric)
+    tabla = dice_subset(DATA_DF, anios, regiones, productos, canales)
 
     return safe_json({
-        "filtros": {"Año": anios, "Región": regiones, "Producto": productos, "Canal": canales},
-        "metric": metric,
-        "data": tabla.to_dict(orient="records"),
-        "columns": list(tabla.columns)
+        "columns": tabla.columns.tolist(),
+        "data": tabla.to_dict(orient="records")
     })
-
-
-@app.route("/api/cubo")
-def api_cubo():
-    """Endpoint que devuelve la estructura completa del cubo OLAP."""
-    vistas = cubo_completo(DATA_DF)
-    return safe_json(vistas)
 
 
 @app.route("/api/celda")
 def api_celda():
-    """Endpoint que devuelve los detalles de una celda específica del cubo."""
+    """
+    Endpoint: detalle Drill-Down de una celda.
+
+    Query:
+        dim_x, valor_x, dim_y, valor_y
+
+    Returns:
+        JSON: filas completas que cumplen esa combinación.
+    """
     dim_x = request.args.get("dim_x", "Año")
     valor_x = request.args.get("valor_x", "2024")
     dim_y = request.args.get("dim_y", "Región")
     valor_y = request.args.get("valor_y", "Norte")
 
-    detalle = detalle_celda(DATA_DF, dim_x, valor_x, dim_y, valor_y)
+    tabla = detalle_celda(DATA_DF, dim_x, valor_x, dim_y, valor_y)
+
     return safe_json({
-        "dim_x": dim_x,
-        "valor_x": valor_x,
-        "dim_y": dim_y,
-        "valor_y": valor_y,
-        "data": detalle.to_dict(orient="records"),
-        "columns": list(map(str, detalle.columns))
+        "columns": tabla.columns.tolist(),
+        "data": tabla.to_dict(orient="records")
     })
 
 
